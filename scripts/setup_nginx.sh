@@ -14,7 +14,7 @@ fi
 CONF_PATH=/etc/nginx/sites-available/studentlink
 ENABLED_PATH=/etc/nginx/sites-enabled/studentlink
 
-read -r -d '' CONF <<NGINX
+read -r -d '' CONF <<'NGINX'
 server {
     listen 80;
     server_name ${DOMAIN};
