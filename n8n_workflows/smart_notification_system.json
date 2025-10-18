@@ -1,0 +1,575 @@
+{
+  "name": "Smart Notification System",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smart-notifications",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Smart Notification Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "smart-notifications"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get current time and determine notification context\nconst now = new Date();\nconst currentHour = now.getHours();\nconst isBusinessHours = currentHour >= 8 && currentHour <= 18;\nconst isWeekend = now.getDay() === 0 || now.getDay() === 6;\n\n// Determine notification timing and channels\nconst notificationConfig = {\n  immediate: false,\n  channels: ['push'],\n  priority: 'medium',\n  delay_minutes: 0\n};\n\n// Urgent concerns get immediate notifications\nif ($json.priority === 'urgent') {\n  notificationConfig.immediate = true;\n  notificationConfig.channels = ['push', 'sms'];\n  notificationConfig.priority = 'urgent';\n}\n// High priority concerns get immediate notifications during business hours\nelse if ($json.priority === 'high' && isBusinessHours && !isWeekend) {\n  notificationConfig.immediate = true;\n  notificationConfig.channels = ['push', 'email'];\n  notificationConfig.priority = 'high';\n}\n// Medium priority concerns get delayed notifications outside business hours\nelse if ($json.priority === 'medium' && (!isBusinessHours || isWeekend)) {\n  notificationConfig.delay_minutes = 30;\n  notificationConfig.channels = ['push'];\n}\n// Low priority concerns get batched notifications\nelse if ($json.priority === 'low') {\n  notificationConfig.delay_minutes = 60;\n  notificationConfig.channels = ['push'];\n}\n\nreturn {\n  ...$json,\n  notification_config: notificationConfig,\n  current_time: now.toISOString(),\n  is_business_hours: isBusinessHours,\n  is_weekend: isWeekend\n};"
+      },
+      "id": "determine-notification-context",
+      "name": "Determine Notification Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "immediate-check",
+              "leftValue": "={{ $json.notification_config.immediate }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "immediate-notification-check",
+      "name": "Immediate Notification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.recipient_id }}"
+            },
+            {
+              "name": "type",
+              "value": "={{ $json.notification_type }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.notification_config.priority }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json.data || {}) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-immediate-notification",
+      "name": "Create Immediate Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "push-channel-check",
+              "leftValue": "={{ $json.notification_config.channels }}",
+              "rightValue": "push",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "push-notification-check",
+      "name": "Send Push Notification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/firebase/send-to-user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.recipient_id }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "body",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json.data || {}) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-push-notification",
+      "name": "Send Push Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "email-channel-check",
+              "leftValue": "={{ $json.notification_config.channels }}",
+              "rightValue": "email",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "email-notification-check",
+      "name": "Send Email Notification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send-email",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.recipient_id }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.notification_config.priority }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-email-notification",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "sms-channel-check",
+              "leftValue": "={{ $json.notification_config.channels }}",
+              "rightValue": "sms",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "sms-notification-check",
+      "name": "Send SMS Notification?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send-sms",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.recipient_id }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.notification_config.priority }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms-notification",
+      "name": "Send SMS Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.notification_config.delay_minutes }}",
+        "unit": "minutes"
+      },
+      "id": "delay-notification",
+      "name": "Delay Notification",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.recipient_id }}"
+            },
+            {
+              "name": "type",
+              "value": "={{ $json.notification_type }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.title }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            },
+            {
+              "name": "priority",
+              "value": "={{ $json.notification_config.priority }}"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify($json.data || {}) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-delayed-notification",
+      "name": "Create Delayed Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Smart notification processed', recipient_id: $json.recipient_id, channels: $json.notification_config.channels, immediate: $json.notification_config.immediate }) }}"
+      },
+      "id": "notification-response",
+      "name": "Notification Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "webhook-trigger": {
+      "main": [
+        [
+          {
+            "node": "determine-notification-context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "determine-notification-context": {
+      "main": [
+        [
+          {
+            "node": "immediate-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "immediate-notification-check": {
+      "main": [
+        [
+          {
+            "node": "create-immediate-notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "delay-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-immediate-notification": {
+      "main": [
+        [
+          {
+            "node": "push-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "push-notification-check": {
+      "main": [
+        [
+          {
+            "node": "send-push-notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "email-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-push-notification": {
+      "main": [
+        [
+          {
+            "node": "email-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "email-notification-check": {
+      "main": [
+        [
+          {
+            "node": "send-email-notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "sms-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-email-notification": {
+      "main": [
+        [
+          {
+            "node": "sms-notification-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sms-notification-check": {
+      "main": [
+        [
+          {
+            "node": "send-sms-notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "notification-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send-sms-notification": {
+      "main": [
+        [
+          {
+            "node": "notification-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "delay-notification": {
+      "main": [
+        [
+          {
+            "node": "create-delayed-notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-delayed-notification": {
+      "main": [
+        [
+          {
+            "node": "notification-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-03T05:25:00.000Z",
+  "versionId": "1"
+}

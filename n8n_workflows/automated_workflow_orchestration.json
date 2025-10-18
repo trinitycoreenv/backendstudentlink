@@ -1,0 +1,489 @@
+{
+  "name": "Automated Workflow Orchestration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "workflow-orchestration",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Workflow Orchestration Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "workflow-orchestration"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auto-approval-check",
+              "leftValue": "={{ $json.auto_approved }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "auto-approval-check",
+      "name": "Check Auto-Approval",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{ $json.concern_id }}/approve",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "approved_by",
+              "value": "system"
+            },
+            {
+              "name": "auto_approved",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "auto-approve-concern",
+      "name": "Auto-Approve Concern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "escalation-check",
+              "leftValue": "={{ $json.escalated }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "escalation-check",
+      "name": "Check Escalation",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.escalated_to }}"
+            },
+            {
+              "name": "type",
+              "value": "escalation"
+            },
+            {
+              "name": "title",
+              "value": "URGENT: Concern Escalated"
+            },
+            {
+              "name": "message",
+              "value": "Concern #{{ $json.reference_number }} has been escalated: {{ $json.reason }}"
+            },
+            {
+              "name": "priority",
+              "value": "urgent"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ concern_id: $json.concern_id, escalation_reason: $json.reason, escalation_type: $json.escalation_type }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-escalation-notification",
+      "name": "Create Escalation Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.student_id }}"
+            },
+            {
+              "name": "type",
+              "value": "concern_update"
+            },
+            {
+              "name": "title",
+              "value": "Concern Auto-Approved"
+            },
+            {
+              "name": "message",
+              "value": "Your concern #{{ $json.reference_number }} has been automatically approved and is now being processed"
+            },
+            {
+              "name": "priority",
+              "value": "medium"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ concern_id: $json.concern_id, status: 'approved', reference_number: $json.reference_number, auto_approved: true }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-student-auto-approval",
+      "name": "Notify Student - Auto Approval",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auto-closure-check",
+              "leftValue": "={{ $json.auto_closed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "auto-closure-check",
+      "name": "Check Auto-Closure",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{ $json.concern_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "closed"
+            },
+            {
+              "name": "closed_at",
+              "value": "={{ $json.closed_at }}"
+            },
+            {
+              "name": "closed_by",
+              "value": "system"
+            },
+            {
+              "name": "auto_closed",
+              "value": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "auto-close-concern",
+      "name": "Auto-Close Concern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.student_id }}"
+            },
+            {
+              "name": "type",
+              "value": "concern_update"
+            },
+            {
+              "name": "title",
+              "value": "Concern Auto-Closed"
+            },
+            {
+              "name": "message",
+              "value": "Your concern #{{ $json.reference_number }} has been automatically closed after {{ $json.days_since_confirmation }} days of confirmation"
+            },
+            {
+              "name": "priority",
+              "value": "low"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ concern_id: $json.concern_id, status: 'closed', reference_number: $json.reference_number, auto_closed: true }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-student-auto-closure",
+      "name": "Notify Student - Auto Closure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Workflow orchestration completed', concern_id: $json.concern_id, actions_taken: $json.actions_taken || [] }) }}"
+      },
+      "id": "workflow-response",
+      "name": "Workflow Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    }
+  ],
+  "connections": {
+    "webhook-trigger": {
+      "main": [
+        [
+          {
+            "node": "auto-approval-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "auto-approval-check": {
+      "main": [
+        [
+          {
+            "node": "auto-approve-concern",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "escalation-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "auto-approve-concern": {
+      "main": [
+        [
+          {
+            "node": "notify-student-auto-approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "escalation-check": {
+      "main": [
+        [
+          {
+            "node": "create-escalation-notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "auto-closure-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create-escalation-notification": {
+      "main": [
+        [
+          {
+            "node": "workflow-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notify-student-auto-approval": {
+      "main": [
+        [
+          {
+            "node": "workflow-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "auto-closure-check": {
+      "main": [
+        [
+          {
+            "node": "auto-close-concern",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "workflow-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "auto-close-concern": {
+      "main": [
+        [
+          {
+            "node": "notify-student-auto-closure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notify-student-auto-closure": {
+      "main": [
+        [
+          {
+            "node": "workflow-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-03T05:25:00.000Z",
+  "versionId": "1"
+}

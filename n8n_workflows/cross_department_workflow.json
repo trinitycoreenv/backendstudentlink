@@ -1,0 +1,413 @@
+{
+  "name": "StudentLink - Cross-Department Staff Sharing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cross-department-request",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Cross-Department Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "cross-dept-request-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/staff/cross-department/available",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "requesting_department_id",
+              "value": "={{$json.requesting_department_id}}"
+            },
+            {
+              "name": "skill_requirements",
+              "value": "={{$json.skill_requirements}}"
+            },
+            {
+              "name": "max_workload",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "find-cross-dept-staff",
+      "name": "Find Cross-Department Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "staff-available",
+              "leftValue": "={{$json.data.length}}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "staff-available-check",
+      "name": "Staff Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/staff/cross-department/assign",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "staff_id",
+              "value": "={{$('Find Cross-Department Staff').item.json.data[0].id}}"
+            },
+            {
+              "name": "requesting_department_id",
+              "value": "={{$json.requesting_department_id}}"
+            },
+            {
+              "name": "concern_id",
+              "value": "={{$json.concern_id}}"
+            },
+            {
+              "name": "assignment_type",
+              "value": "cross_department"
+            },
+            {
+              "name": "estimated_duration_hours",
+              "value": "={{$json.estimated_duration_hours || 8}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "assign-cross-dept",
+      "name": "Assign Cross-Department",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Find Cross-Department Staff').item.json.data[0].id}}"
+            },
+            {
+              "name": "type",
+              "value": "cross_department_assignment"
+            },
+            {
+              "name": "title",
+              "value": "🌐 Cross-Department Assignment"
+            },
+            {
+              "name": "message",
+              "value": "You have been assigned to help with a concern from another department: {{$json.concern_subject}}"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.concern_id, requesting_department: $json.requesting_department_name, assignment_type: 'cross_department'})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-staff",
+      "name": "Notify Assigned Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$json.requesting_department_head_id}}"
+            },
+            {
+              "name": "type",
+              "value": "cross_department_confirmation"
+            },
+            {
+              "name": "title",
+              "value": "✅ Cross-Department Staff Assigned"
+            },
+            {
+              "name": "message",
+              "value": "Cross-department staff has been assigned to your concern: {{$json.concern_subject}}"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.concern_id, assigned_staff: $('Find Cross-Department Staff').item.json.data[0].name, assignment_type: 'cross_department'})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-requesting-dept",
+      "name": "Notify Requesting Department",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$json.requesting_department_head_id}}"
+            },
+            {
+              "name": "type",
+              "value": "cross_department_unavailable"
+            },
+            {
+              "name": "title",
+              "value": "⚠️ No Cross-Department Staff Available"
+            },
+            {
+              "name": "message",
+              "value": "No available cross-department staff found for your concern: {{$json.concern_subject}}. Please try again later or contact admin."
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.concern_id, reason: 'no_available_staff'})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-unavailable",
+      "name": "Notify Unavailable",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "daily-cleanup",
+      "name": "Daily Cleanup",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/staff/cross-department/cleanup",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "cleanup_type",
+              "value": "expired_assignments"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cleanup-expired",
+      "name": "Cleanup Expired Assignments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 500]
+    }
+  ],
+  "connections": {
+    "Cross-Department Request": {
+      "main": [
+        [
+          {
+            "node": "Find Cross-Department Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Cross-Department Staff": {
+      "main": [
+        [
+          {
+            "node": "Staff Available?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Staff Available?": {
+      "main": [
+        [
+          {
+            "node": "Assign Cross-Department",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Unavailable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Cross-Department": {
+      "main": [
+        [
+          {
+            "node": "Notify Assigned Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Assigned Staff": {
+      "main": [
+        [
+          {
+            "node": "Notify Requesting Department",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Cleanup": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Expired Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-02T10:00:00.000Z",
+      "updatedAt": "2025-01-02T10:00:00.000Z",
+      "id": "studentlink",
+      "name": "StudentLink"
+    }
+  ],
+  "triggerCount": 2,
+  "updatedAt": "2025-01-02T10:00:00.000Z",
+  "versionId": "1"
+}

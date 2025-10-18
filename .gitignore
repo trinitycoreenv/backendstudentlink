@@ -1,0 +1,97 @@
+# Laravel .gitignore
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+.env.testing
+
+# Logs
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# Cache
+/bootstrap/cache/*
+!/bootstrap/cache/.gitkeep
+
+# Compiled assets
+/public/hot
+/public/storage
+/storage/*.key
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build files
+/public/build/
+/public/mix-manifest.json
+
+# Testing
+/coverage/
+/.phpunit.result.cache
+/phpunit.xml
+
+# Backup files
+*.backup
+*.bak
+*_backup.txt
+*_CREDENTIALS.txt
+*_SECRETS.txt
+CREDENTIALS_BACKUP.txt
+
+# Temporary files
+*.tmp
+*.temp
+
+# Laravel specific
+/storage/app/*
+!/storage/app/.gitkeep
+/storage/framework/cache/*
+!/storage/framework/cache/.gitkeep
+/storage/framework/sessions/*
+!/storage/framework/sessions/.gitkeep
+/storage/framework/testing/*
+!/storage/framework/testing/.gitkeep
+/storage/framework/views/*
+!/storage/framework/views/.gitkeep
+
+# Composer
+composer.phar
+composer.lock
+
+# NPM
+package-lock.json
+yarn.lock
+
+# Database
+*.sqlite
+*.db
+
+# SSL certificates
+*.pem
+*.crt
+*.key
+
+# Deployment
+/deploy/
+/.deploy/
+
+# Documentation
+/docs/
+*.md
+!README.md
+aasprod
+asassf

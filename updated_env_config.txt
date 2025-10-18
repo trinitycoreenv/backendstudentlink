@@ -1,0 +1,35 @@
+# Updated OpenRouter Configuration for Google Gemini 2.0 Flash Experimental
+# Replace the existing OpenRouter configuration in your .env file with these lines:
+
+# OpenRouter AI Configuration
+OPENROUTER_ENABLED=true
+OPENROUTER_API_KEY=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
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+OPENROUTER_DEFAULT_MODEL=google/gemini-2.0-flash-exp:free
+OPENROUTER_FAST_MODEL=grok-beta:free
+OPENROUTER_CREATIVE_MODEL=google/gemini-2.0-flash-exp:free
+OPENROUTER_MAX_TOKENS=300
+OPENROUTER_TEMPERATURE=0.7
+OPENROUTER_TIMEOUT=30
+
+# Instructions:
+# 1. Open your .env file in the studentlink_backend directory
+# 2. Find the existing OpenRouter configuration (lines 126-134)
+# 3. Replace those lines with the configuration above
+# 4. Save the file
+# 5. Run: php artisan config:clear
+# 6. Test the AI Writing Assistant
+
+# Model Details:
+# - Model: Google Gemini 2.0 Flash Experimental (free)
+# - Context Window: 1,048,576 tokens
+# - Pricing: $0/M input tokens, $0/M output tokens
+# - Features: Faster time to first token, high quality responses
+# - Created: Dec 11, 2024
+
+# Benefits of this model:
+# ✅ Free to use (no rate limits like DeepSeek R1)
+# ✅ Large context window for better understanding
+# ✅ Fast response times
+# ✅ High quality AI responses
+# ✅ Perfect for writing assistance tasks

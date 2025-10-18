@@ -1,0 +1,476 @@
+{
+  "name": "Predictive Analytics Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Analytics Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/analytics/predictive-data",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-predictive-data",
+      "name": "Fetch Predictive Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze concern patterns and predict bottlenecks\nconst data = $json;\nconst now = new Date();\n\n// Calculate resolution time predictions\nconst resolutionTimePredictions = {\n  urgent: 2, // hours\n  high: 8,   // hours\n  medium: 24, // hours\n  low: 72    // hours\n};\n\n// Analyze current workload distribution\nconst workloadAnalysis = {\n  total_active_concerns: data.total_active_concerns || 0,\n  staff_workload: data.staff_workload || {},\n  department_distribution: data.department_distribution || {},\n  predicted_bottlenecks: [],\n  recommendations: []\n};\n\n// Identify potential bottlenecks\nif (workloadAnalysis.total_active_concerns > 100) {\n  workloadAnalysis.predicted_bottlenecks.push({\n    type: 'high_volume',\n    severity: 'high',\n    message: 'High concern volume detected - consider activating cross-department support'\n  });\n  workloadAnalysis.recommendations.push({\n    action: 'activate_cross_department',\n    priority: 'high',\n    description: 'Activate cross-department staff sharing to handle high volume'\n  });\n}\n\n// Check for overloaded staff members\nObject.entries(workloadAnalysis.staff_workload).forEach(([staffId, workload]) => {\n  if (workload.active_concerns > 10) {\n    workloadAnalysis.predicted_bottlenecks.push({\n      type: 'staff_overload',\n      severity: 'medium',\n      staff_id: staffId,\n      message: `Staff member ${staffId} has ${workload.active_concerns} active concerns`\n    });\n    workloadAnalysis.recommendations.push({\n      action: 'redistribute_workload',\n      priority: 'medium',\n      staff_id: staffId,\n      description: 'Redistribute workload from overloaded staff member'\n    });\n  }\n});\n\n// Predict resolution times based on current patterns\nconst resolutionPredictions = {\n  average_resolution_time: data.average_resolution_time || 24,\n  predicted_today: {\n    urgent: Math.ceil((data.urgent_concerns || 0) * resolutionTimePredictions.urgent),\n    high: Math.ceil((data.high_concerns || 0) * resolutionTimePredictions.high),\n    medium: Math.ceil((data.medium_concerns || 0) * resolutionTimePredictions.medium),\n    low: Math.ceil((data.low_concerns || 0) * resolutionTimePredictions.low)\n  },\n  confidence_score: 0.85\n};\n\n// Generate proactive insights\nconst proactiveInsights = [];\n\nif (data.urgent_concerns > 5) {\n  proactiveInsights.push({\n    type: 'escalation_warning',\n    priority: 'high',\n    message: 'High number of urgent concerns - consider activating emergency protocols',\n    action_required: true\n  });\n}\n\nif (data.unassigned_concerns > 10) {\n  proactiveInsights.push({\n    type: 'assignment_bottleneck',\n    priority: 'medium',\n    message: 'Multiple unassigned concerns detected - review assignment process',\n    action_required: true\n  });\n}\n\n// Check for time-based patterns\nconst currentHour = now.getHours();\nif (currentHour >= 9 && currentHour <= 11) {\n  proactiveInsights.push({\n    type: 'peak_hours',\n    priority: 'low',\n    message: 'Peak concern submission hours - ensure adequate staff coverage',\n    action_required: false\n  });\n}\n\nreturn {\n  timestamp: now.toISOString(),\n  workload_analysis: workloadAnalysis,\n  resolution_predictions: resolutionPredictions,\n  proactive_insights: proactiveInsights,\n  system_health: {\n    overall_score: 85,\n    bottlenecks_detected: workloadAnalysis.predicted_bottlenecks.length,\n    recommendations_count: workloadAnalysis.recommendations.length\n  }\n};"
+      },
+      "id": "analyze-patterns",
+      "name": "Analyze Patterns & Predict",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "bottleneck-check",
+              "leftValue": "={{ $json.workload_analysis.predicted_bottlenecks.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bottleneck-detection",
+      "name": "Bottleneck Detected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "1"
+            },
+            {
+              "name": "type",
+              "value": "system_alert"
+            },
+            {
+              "name": "title",
+              "value": "System Bottleneck Detected"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.workload_analysis.predicted_bottlenecks[0].message }}"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            },
+            {
+              "name": "data",
+              "value": "={{ JSON.stringify({ bottlenecks: $json.workload_analysis.predicted_bottlenecks, recommendations: $json.workload_analysis.recommendations }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-bottleneck",
+      "name": "Notify Bottleneck Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "insight-check",
+              "leftValue": "={{ $json.proactive_insights.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "insight-detection",
+      "name": "Proactive Insights?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/analytics/store-insights",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "insights",
+              "value": "={{ JSON.stringify($json.proactive_insights) }}"
+            },
+            {
+              "name": "workload_analysis",
+              "value": "={{ JSON.stringify($json.workload_analysis) }}"
+            },
+            {
+              "name": "resolution_predictions",
+              "value": "={{ JSON.stringify($json.resolution_predictions) }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "store-insights",
+      "name": "Store Insights",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auto-action-check",
+              "leftValue": "={{ $json.workload_analysis.recommendations }}",
+              "rightValue": "activate_cross_department",
+              "operator": {
+                "type": "array",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "auto-action-check",
+      "name": "Auto-Action Required?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/cross-department/activate-emergency",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reason",
+              "value": "High concern volume detected by predictive analytics"
+            },
+            {
+              "name": "triggered_by",
+              "value": "system"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "activate-cross-department",
+      "name": "Activate Cross-Department",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 100]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/analytics/update-predictions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "predictions",
+              "value": "={{ JSON.stringify($json.resolution_predictions) }}"
+            },
+            {
+              "name": "system_health",
+              "value": "={{ JSON.stringify($json.system_health) }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-predictions",
+      "name": "Update Predictions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Predictive analytics completed', insights_generated: $json.proactive_insights.length, bottlenecks_detected: $json.workload_analysis.predicted_bottlenecks.length }) }}"
+      },
+      "id": "analytics-response",
+      "name": "Analytics Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1780, 300]
+    }
+  ],
+  "connections": {
+    "schedule-trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch-predictive-data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch-predictive-data": {
+      "main": [
+        [
+          {
+            "node": "analyze-patterns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "analyze-patterns": {
+      "main": [
+        [
+          {
+            "node": "bottleneck-detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "bottleneck-detection": {
+      "main": [
+        [
+          {
+            "node": "notify-bottleneck",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "insight-detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "notify-bottleneck": {
+      "main": [
+        [
+          {
+            "node": "auto-action-check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "auto-action-check": {
+      "main": [
+        [
+          {
+            "node": "activate-cross-department",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "update-predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "activate-cross-department": {
+      "main": [
+        [
+          {
+            "node": "update-predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "insight-detection": {
+      "main": [
+        [
+          {
+            "node": "store-insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "update-predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "store-insights": {
+      "main": [
+        [
+          {
+            "node": "update-predictions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update-predictions": {
+      "main": [
+        [
+          {
+            "node": "analytics-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-03T05:25:00.000Z",
+  "versionId": "1"
+}

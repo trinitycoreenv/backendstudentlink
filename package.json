@@ -1,0 +1,8 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "echo 'No build needed for API backend'",
+        "dev": "echo 'No dev build needed for API backend'"
+    }
+}

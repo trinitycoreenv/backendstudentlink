@@ -1,0 +1,397 @@
+{
+  "name": "StudentLink - Automated Escalation & Reminders",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 2 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "pending,in_progress"
+            },
+            {
+              "name": "per_page",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-active-concerns",
+      "name": "Get Active Concerns",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check for overdue concerns\nconst concerns = $input.all();\nconst now = new Date();\nconst overdueConcerns = [];\nconst reminderConcerns = [];\n\nfor (const concern of concerns) {\n  const createdAt = new Date(concern.json.created_at);\n  const hoursSinceCreated = (now - createdAt) / (1000 * 60 * 60);\n  \n  // Check if concern is overdue (more than 24 hours for urgent, 48 hours for others)\n  const isOverdue = concern.json.priority === 'urgent' ? hoursSinceCreated > 24 : hoursSinceCreated > 48;\n  \n  // Check if reminder needed (12 hours for urgent, 24 hours for others)\n  const needsReminder = concern.json.priority === 'urgent' ? hoursSinceCreated > 12 : hoursSinceCreated > 24;\n  \n  if (isOverdue) {\n    overdueConcerns.push({\n      ...concern.json,\n      hours_overdue: Math.floor(hoursSinceCreated),\n      escalation_type: 'overdue'\n    });\n  } else if (needsReminder && !concern.json.last_reminder_sent) {\n    reminderConcerns.push({\n      ...concern.json,\n      hours_since_created: Math.floor(hoursSinceCreated),\n      escalation_type: 'reminder'\n    });\n  }\n}\n\nreturn [\n  ...overdueConcerns.map(c => ({ json: c })),\n  ...reminderConcerns.map(c => ({ json: c }))\n];"
+      },
+      "id": "check-overdue",
+      "name": "Check Overdue & Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "escalation-type",
+              "leftValue": "={{$json.escalation_type}}",
+              "rightValue": "overdue",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "escalation-type-check",
+      "name": "Escalation Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/staff/available",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "department_id",
+              "value": "={{$json.department_id}}"
+            },
+            {
+              "name": "max_workload",
+              "value": "15"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-backup-staff",
+      "name": "Get Backup Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{$json.id}}/reassign",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assigned_to",
+              "value": "={{$('Get Backup Staff').item.json.data[0].id}}"
+            },
+            {
+              "name": "escalation_reason",
+              "value": "Automated escalation: Concern overdue by {{$json.hours_overdue}} hours"
+            },
+            {
+              "name": "priority",
+              "value": "urgent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "reassign-concern",
+      "name": "Reassign Concern",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$json.assigned_to}}"
+            },
+            {
+              "name": "type",
+              "value": "concern_reminder"
+            },
+            {
+              "name": "title",
+              "value": "⏰ Reminder: Concern Pending"
+            },
+            {
+              "name": "message",
+              "value": "Reminder: You have a pending concern that needs attention: {{$json.subject}}"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.id, hours_since_created: $json.hours_since_created})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-reminder",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Reassign Concern').item.json.assigned_to}}"
+            },
+            {
+              "name": "type",
+              "value": "escalated_concern"
+            },
+            {
+              "name": "title",
+              "value": "🚨 ESCALATED: Urgent Concern Reassigned"
+            },
+            {
+              "name": "message",
+              "value": "ESCALATED: You have been assigned an overdue concern: {{$json.subject}} ({{$json.hours_overdue}} hours overdue)"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.id, escalation_reason: 'overdue'})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-escalation",
+      "name": "Notify Escalation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{$json.id}}/update-reminder",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "last_reminder_sent",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-reminder-status",
+      "name": "Update Reminder Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 400]
+    }
+  ],
+  "connections": {
+    "Every 2 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Active Concerns",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Concerns": {
+      "main": [
+        [
+          {
+            "node": "Check Overdue & Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Overdue & Reminders": {
+      "main": [
+        [
+          {
+            "node": "Escalation Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escalation Type": {
+      "main": [
+        [
+          {
+            "node": "Get Backup Staff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Backup Staff": {
+      "main": [
+        [
+          {
+            "node": "Reassign Concern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reassign Concern": {
+      "main": [
+        [
+          {
+            "node": "Notify Escalation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Update Reminder Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-02T10:00:00.000Z",
+      "updatedAt": "2025-01-02T10:00:00.000Z",
+      "id": "studentlink",
+      "name": "StudentLink"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-02T10:00:00.000Z",
+  "versionId": "1"
+}

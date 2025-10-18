@@ -1,0 +1,384 @@
+{
+  "name": "StudentLink - Concern Classification & Staff Assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "concern-created",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - New Concern",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "concern-created-webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/ai/classify-concern",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "subject",
+              "value": "={{$json.subject}}"
+            },
+            {
+              "name": "description",
+              "value": "={{$json.description}}"
+            },
+            {
+              "name": "type",
+              "value": "={{$json.type}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ai-classification",
+      "name": "AI Classification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/staff/available",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "department_id",
+              "value": "={{$json.department_id}}"
+            },
+            {
+              "name": "max_workload",
+              "value": "8"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-available-staff",
+      "name": "Get Available Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "priority-check",
+              "leftValue": "={{$('AI Classification').item.json.priority}}",
+              "rightValue": "urgent",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "priority-check",
+      "name": "Priority Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{$json.id}}/assign",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assigned_to",
+              "value": "={{$('Get Available Staff').item.json.data[0].id}}"
+            },
+            {
+              "name": "priority",
+              "value": "={{$('AI Classification').item.json.priority}}"
+            },
+            {
+              "name": "classification_notes",
+              "value": "AI Classified: {{$('AI Classification').item.json.category}} - {{$('AI Classification').item.json.confidence}}% confidence"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "assign-to-staff",
+      "name": "Assign to Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/concerns/{{$json.id}}/assign",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "assigned_to",
+              "value": "={{$('Get Available Staff').item.json.data[0].id}}"
+            },
+            {
+              "name": "priority",
+              "value": "high"
+            },
+            {
+              "name": "classification_notes",
+              "value": "URGENT: AI Classified as urgent - {{$('AI Classification').item.json.category}} - {{$('AI Classification').item.json.confidence}}% confidence"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "assign-urgent",
+      "name": "Assign Urgent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Assign to Staff').item.json.assigned_to}}"
+            },
+            {
+              "name": "type",
+              "value": "concern_assigned"
+            },
+            {
+              "name": "title",
+              "value": "New Concern Assigned"
+            },
+            {
+              "name": "message",
+              "value": "You have been assigned a new concern: {{$json.subject}}"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.id, priority: $('AI Classification').item.json.priority})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-staff",
+      "name": "Notify Staff",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://subangulately-ignitible-hugo.ngrok-free.dev/api/n8n/notifications/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{$('Assign Urgent').item.json.assigned_to}}"
+            },
+            {
+              "name": "type",
+              "value": "urgent_concern_assigned"
+            },
+            {
+              "name": "title",
+              "value": "🚨 URGENT Concern Assigned"
+            },
+            {
+              "name": "message",
+              "value": "URGENT: You have been assigned an urgent concern: {{$json.subject}}"
+            },
+            {
+              "name": "data",
+              "value": "={{JSON.stringify({concern_id: $json.id, priority: 'urgent'})}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-urgent",
+      "name": "Notify Urgent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - New Concern": {
+      "main": [
+        [
+          {
+            "node": "AI Classification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Classification": {
+      "main": [
+        [
+          {
+            "node": "Get Available Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Available Staff": {
+      "main": [
+        [
+          {
+            "node": "Priority Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Priority Check": {
+      "main": [
+        [
+          {
+            "node": "Assign to Staff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Assign Urgent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign to Staff": {
+      "main": [
+        [
+          {
+            "node": "Notify Staff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assign Urgent": {
+      "main": [
+        [
+          {
+            "node": "Notify Urgent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-02T10:00:00.000Z",
+      "updatedAt": "2025-01-02T10:00:00.000Z",
+      "id": "studentlink",
+      "name": "StudentLink"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2025-01-02T10:00:00.000Z",
+  "versionId": "1"
+}
