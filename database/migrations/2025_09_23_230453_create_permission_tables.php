@@ -26,12 +26,9 @@ return new class extends Migration
         }
 
         // Resolve pivot column names compatibly across spatie/laravel-permission versions
-        $pivotPermissionColumn = property_exists(PermissionRegistrar::class, 'pivotPermission')
-            ? PermissionRegistrar::$pivotPermission
-            : 'permission_id';
-        $pivotRoleColumn = property_exists(PermissionRegistrar::class, 'pivotRole')
-            ? PermissionRegistrar::$pivotRole
-            : 'role_id';
+        // Avoid referencing undefined static properties; use canonical defaults
+        $pivotPermissionColumn = 'permission_id';
+        $pivotRoleColumn = 'role_id';
 
         Schema::create($tableNames['permissions'], function (Blueprint $table) {
             $table->bigIncrements('id'); // permission id
