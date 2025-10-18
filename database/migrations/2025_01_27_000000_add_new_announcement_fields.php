@@ -14,7 +14,13 @@ return new class extends Migration
         Schema::table('announcements', function (Blueprint $table) {
             // Add new fields for the revamped announcement system
             if (!Schema::hasColumn('announcements', 'category')) {
-                $table->string('category')->default('General')->after('internal_title');
+                if (Schema::hasColumn('announcements', 'internal_title')) {
+                    $table->string('category')->default('General')->after('internal_title');
+                } elseif (Schema::hasColumn('announcements', 'title')) {
+                    $table->string('category')->default('General')->after('title');
+                } else {
+                    $table->string('category')->default('General');
+                }
             }
             if (!Schema::hasColumn('announcements', 'title')) {
                 $table->string('title')->nullable()->after('category');
