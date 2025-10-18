@@ -12,18 +12,31 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            // Add image support columns
-            $table->string('image_path')->nullable()->after('content');
-            $table->string('image_filename')->nullable()->after('image_path');
-            $table->string('image_mime_type')->nullable()->after('image_filename');
-            $table->integer('image_size')->nullable()->after('image_mime_type');
-            $table->integer('image_width')->nullable()->after('image_size');
-            $table->integer('image_height')->nullable()->after('image_width');
-            $table->enum('announcement_type', ['text', 'image'])->default('text')->after('type');
-            
-            // Add indexes for better performance
-            $table->index('announcement_type');
-            $table->index(['announcement_type', 'status']);
+            // Add image support columns only if they don't already exist
+            if (!Schema::hasColumn('announcements', 'image_path')) {
+                $table->string('image_path')->nullable()->after('content');
+            }
+            if (!Schema::hasColumn('announcements', 'image_filename')) {
+                $table->string('image_filename')->nullable()->after('image_path');
+            }
+            if (!Schema::hasColumn('announcements', 'image_mime_type')) {
+                $table->string('image_mime_type')->nullable()->after('image_filename');
+            }
+            if (!Schema::hasColumn('announcements', 'image_size')) {
+                $table->integer('image_size')->nullable()->after('image_mime_type');
+            }
+            if (!Schema::hasColumn('announcements', 'image_width')) {
+                $table->integer('image_width')->nullable()->after('image_size');
+            }
+            if (!Schema::hasColumn('announcements', 'image_height')) {
+                $table->integer('image_height')->nullable()->after('image_width');
+            }
+            // Add announcement_type and related indexes only if the column doesn't exist
+            if (!Schema::hasColumn('announcements', 'announcement_type')) {
+                $table->enum('announcement_type', ['text', 'image'])->default('text')->after('type');
+                $table->index('announcement_type');
+                $table->index(['announcement_type', 'status']);
+            }
         });
     }
 
