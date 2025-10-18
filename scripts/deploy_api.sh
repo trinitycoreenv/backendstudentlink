@@ -4,6 +4,15 @@ set -euo pipefail
 APP_DIR=${APP_DIR:-/var/www/api}
 cd "$APP_DIR"
 
+# Ensure required writable directories exist before Composer triggers Artisan hooks
+mkdir -p bootstrap/cache \
+  storage/logs \
+  storage/app \
+  storage/framework/cache \
+  storage/framework/sessions \
+  storage/framework/views
+chmod -R 775 storage bootstrap/cache || true
+
 BRANCH=$(git rev-parse --abbrev-ref HEAD || echo main)
 
 echo "Pulling latest from origin/$BRANCH..."
