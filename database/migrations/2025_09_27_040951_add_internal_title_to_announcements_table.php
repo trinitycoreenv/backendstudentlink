@@ -12,7 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            $table->string('internal_title')->nullable()->after('author_id');
+            // Add internal_title safely, without assuming author_id exists
+            if (!Schema::hasColumn('announcements', 'internal_title')) {
+                if (Schema::hasColumn('announcements', 'author_id')) {
+                    $table->string('internal_title')->nullable()->after('author_id');
+                } else {
+                    $table->string('internal_title')->nullable();
+                }
+            }
         });
     }
 
@@ -22,7 +29,9 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('announcements', function (Blueprint $table) {
-            $table->dropColumn('internal_title');
+            if (Schema::hasColumn('announcements', 'internal_title')) {
+                $table->dropColumn('internal_title');
+            }
         });
     }
 };
