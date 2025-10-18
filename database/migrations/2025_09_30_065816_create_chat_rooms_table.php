@@ -11,22 +11,24 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('chat_rooms', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('concern_id')->constrained()->onDelete('cascade');
-            $table->string('room_name');
-            $table->enum('status', ['active', 'closed', 'archived'])->default('active');
-            $table->timestamp('last_activity_at')->nullable();
-            $table->foreignId('last_message_id')->nullable()->constrained('chat_messages')->onDelete('set null');
-            $table->json('participants')->nullable();
-            $table->json('settings')->nullable();
-            $table->timestamp('closed_at')->nullable();
-            $table->foreignId('closed_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->timestamps();
+        if (!Schema::hasTable('chat_rooms')) {
+            Schema::create('chat_rooms', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('concern_id')->constrained()->onDelete('cascade');
+                $table->string('room_name');
+                $table->enum('status', ['active', 'closed', 'archived'])->default('active');
+                $table->timestamp('last_activity_at')->nullable();
+                $table->foreignId('last_message_id')->nullable()->constrained('chat_messages')->onDelete('set null');
+                $table->json('participants')->nullable();
+                $table->json('settings')->nullable();
+                $table->timestamp('closed_at')->nullable();
+                $table->foreignId('closed_by')->nullable()->constrained('users')->onDelete('set null');
+                $table->timestamps();
 
-            $table->index(['concern_id', 'status']);
-            $table->index('last_activity_at');
-        });
+                $table->index(['concern_id', 'status']);
+                $table->index('last_activity_at');
+            });
+        }
     }
 
     /**
